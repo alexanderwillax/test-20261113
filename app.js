@@ -10,6 +10,9 @@ const CRITICAL_FROM = 3;   // ab so vielen Personen ist ein Tag kritisch
 const MAX_NAME = 30;
 const STORAGE_KEY = 'urlaubsplaner-2027';
 
+/* Nur für Tests: hier kann ein anderes "Heute" gesetzt werden (Format JJJJ-MM-TT) */
+let TODAY_OVERRIDE = null;
+
 /* Gesetzliche Feiertage Bayern 2027 */
 const HOLIDAYS = {
   '2027-01-01': 'Neujahr',
@@ -42,6 +45,8 @@ const SCHOOL_HOLIDAYS = [
 const MONTHS = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
   'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
 const WEEKDAYS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+const STATUS_TEXT = { pend: 'offen', ok: 'genehmigt' };
+const STATUS_SYMBOL = { pend: '?', ok: '✓' };
 
 /* =========================================================
    Datum-Hilfen (Datum immer als Text "JJJJ-MM-TT")
@@ -85,6 +90,19 @@ function isInYear(text) {
   return /^\d{4}-\d{2}-\d{2}$/.test(text) && text.startsWith(YEAR + '-');
 }
 
+/* Heutiges Datum (Ortszeit des Computers) */
+function todayIso() {
+  if (TODAY_OVERRIDE) return TODAY_OVERRIDE;
+  const now = new Date();
+  return now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' +
+    String(now.getDate()).padStart(2, '0');
+}
+
+/* Vergangene Tage (vor heute) sind gesperrt */
+function isPast(text) {
+  return text < todayIso();
+}
+
 /* Alle Tage von "from" bis "to" (beide eingeschlossen) */
 function rangeDays(from, to) {
   const result = [];
@@ -123,6 +141,10 @@ function formatDateLong(text) {
   return WEEKDAYS[weekday(text)] + ', ' + formatDate(text);
 }
 
+function formatRange(from, to) {
+  return from === to ? formatDate(from) : formatDate(from) + ' – ' + formatDate(to);
+}
+
 function daysText(n) {
   return n === 1 ? '1 Urlaubstag' : n + ' Urlaubstage';
 }
@@ -140,7 +162,24 @@ function remaining(person) {
   return ALLOWANCE - person.days.length;
 }
 
-/* Wer ist an welchem Tag weg? Ergebnis: Map Tag -> Liste der Namen */
+/* Status eines Urlaubstags: 'pend' = offen, 'ok' = genehmigt */
+function statusOf(person, day) {
+  return person.approved.includes(day) ? 'ok' : 'pend';
+}
+
+/* Neue Tage hinzufügen. Sie sind immer erst "offen". */
+function addDays(person, days) {
+  person.days = [...new Set([...person.days, ...days])].sort();
+}
+
+/* Tage löschen, für die test(tag) wahr ist */
+function removeDays(person, test) {
+  person.days = person.days.filter(d => !test(d));
+  person.approved = person.approved.filter(d => person.days.includes(d));
+}
+
+/* Wer ist an welchem Tag weg? Ergebnis: Map Tag -> Liste der Namen.
+   Offene und genehmigte Wünsche zählen beide. */
 function absences(persons) {
   const map = new Map();
   for (const p of persons) {
@@ -158,48 +197,59 @@ function criticalDays(persons) {
     .sort(([a], [b]) => (a < b ? -1 : 1));
 }
 
-/* Fasst Urlaubstage zu Blöcken zusammen.
-   Zwei Tage gehören zusammen, wenn dazwischen nur Wochenenden oder Feiertage liegen. */
-function vacationBlocks(days) {
-  const sorted = [...days].sort();
+/* Fasst Urlaubstage einer Person zu Wünschen (Blöcken) zusammen.
+   Zwei Tage gehören zusammen, wenn sie denselben Status haben und
+   dazwischen nur Wochenenden oder Feiertage liegen. */
+function vacationBlocks(person) {
   const blocks = [];
   let current = null;
-  for (const d of sorted) {
-    if (current && rangeDays(current.to, d).slice(1, -1).every(x => !isWorkday(x))) {
+  for (const d of [...person.days].sort()) {
+    const status = statusOf(person, d);
+    if (current && current.status === status &&
+        rangeDays(current.to, d).slice(1, -1).every(x => !isWorkday(x))) {
       current.to = d;
-      current.count++;
+      current.days.push(d);
     } else {
-      current = { from: d, to: d, count: 1 };
+      current = { from: d, to: d, status, days: [d] };
       blocks.push(current);
     }
   }
   return blocks;
 }
 
+/* Alle Wünsche aller Personen mit einem bestimmten Status, nach Datum sortiert */
+function allWishes(status) {
+  return state.persons
+    .flatMap(p => vacationBlocks(p).filter(b => b.status === status).map(b => ({ ...b, person: p })))
+    .sort((a, b) => (a.from < b.from ? -1 : a.from > b.from ? 1 : 0));
+}
+
 /* =========================================================
    Speichern und Laden
    ========================================================= */
-let state = { persons: [] };
+let state = { persons: [], currentId: '' };
 
 function loadState() {
+  const empty = { persons: [], currentId: '' };
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { persons: [] };
+    if (!raw) return empty;
     const data = JSON.parse(raw);
-    if (!data || !Array.isArray(data.persons)) return { persons: [] };
+    if (!data || !Array.isArray(data.persons)) return empty;
     const persons = data.persons
       .filter(p => p && typeof p.name === 'string' && Array.isArray(p.days))
       .slice(0, MAX_PERSONS)
-      .map(p => ({
-        id: String(p.id),
-        name: p.name.slice(0, MAX_NAME),
-        days: [...new Set(p.days.filter(d => typeof d === 'string' && isInYear(d) && isWorkday(d)))]
+      .map(p => {
+        const days = [...new Set(p.days.filter(d => typeof d === 'string' && isInYear(d) && isWorkday(d)))]
           .sort()
-          .slice(0, ALLOWANCE)
-      }));
-    return { persons };
+          .slice(0, ALLOWANCE);
+        const approved = Array.isArray(p.approved) ? p.approved.filter(d => days.includes(d)) : [];
+        return { id: String(p.id), name: p.name.slice(0, MAX_NAME), admin: p.admin === true, days, approved };
+      });
+    const currentId = persons.some(p => p.id === data.currentId) ? data.currentId : '';
+    return { persons, currentId };
   } catch (e) {
-    return { persons: [] };
+    return empty;
   }
 }
 
@@ -217,6 +267,49 @@ function newId() {
 
 function findPerson(id) {
   return state.persons.find(p => p.id === id) || null;
+}
+
+/* =========================================================
+   Wer bist du? / Admin
+   ========================================================= */
+function currentUser() {
+  return findPerson(state.currentId);
+}
+
+function isAdminUser() {
+  const user = currentUser();
+  return !!(user && user.admin);
+}
+
+/* Solange es keinen Admin gibt, darf jeder einen Admin bestimmen.
+   Danach darf das nur noch ein Admin. */
+function canChangeAdmin() {
+  return !state.persons.some(p => p.admin) || isAdminUser();
+}
+
+function renderWhoAmI() {
+  const select = $('whoami');
+  select.innerHTML = '<option value="">– Bitte wählen –</option>' + state.persons.map(p =>
+    '<option value="' + escapeHtml(p.id) + '">' + escapeHtml(p.name) + (p.admin ? ' (Admin)' : '') + '</option>'
+  ).join('');
+  select.value = state.currentId;
+  select.disabled = state.persons.length === 0;
+
+  const user = currentUser();
+  const role = $('whoami-role');
+  role.textContent = user ? (user.admin ? 'Admin' : 'Teammitglied') : '';
+  role.className = 'badge' + (user ? (user.admin ? ' badge-admin' : ' badge-member') : '');
+  role.hidden = !user;
+}
+
+function onWhoAmIChange() {
+  state.currentId = $('whoami').value;
+  saveState();
+  render();
+  if (state.currentId) {
+    $('vac-person').value = state.currentId;
+    updatePreview();
+  }
 }
 
 /* =========================================================
@@ -247,6 +340,15 @@ function showToast(text, isError) {
   toastTimer = setTimeout(() => { toast.className = 'toast'; }, 3500);
 }
 
+function avatarHtml(person) {
+  return '<span class="avatar avatar-' + (state.persons.indexOf(person) % 5) + '" aria-hidden="true">' +
+    escapeHtml(person.name.trim().charAt(0).toUpperCase()) + '</span>';
+}
+
+function statusBadge(status) {
+  return '<span class="badge badge-' + status + '">' + STATUS_SYMBOL[status] + ' ' + STATUS_TEXT[status] + '</span>';
+}
+
 /* =========================================================
    Personen
    ========================================================= */
@@ -275,7 +377,7 @@ function onAddPerson(event) {
     return;
   }
   const name = input.value.trim();
-  state.persons.push({ id: newId(), name, days: [] });
+  state.persons.push({ id: newId(), name, admin: false, days: [], approved: [] });
   saveState();
   input.value = '';
   showMsg(msg, name + ' wurde angelegt.', 'ok');
@@ -305,10 +407,22 @@ function onPersonListClick(event) {
     render();
   }
 
+  if (action === 'toggle-admin') {
+    if (!canChangeAdmin()) {
+      showMsg(msg, 'Nur ein Admin darf Admins bestimmen. Wähle oben bei „Wer bist du?“ einen Admin.', 'error');
+      return;
+    }
+    person.admin = !person.admin;
+    saveState();
+    showMsg(msg, person.name + (person.admin ? ' ist jetzt Admin.' : ' ist kein Admin mehr.'), 'ok');
+    render();
+  }
+
   if (action === 'delete') {
     const ok = confirm(person.name + ' wirklich löschen?\nAlle Urlaubstage von ' + person.name + ' werden auch gelöscht.');
     if (!ok) return;
     state.persons = state.persons.filter(p => p.id !== person.id);
+    if (state.currentId === person.id) state.currentId = '';
     saveState();
     showMsg(msg, person.name + ' wurde gelöscht.', 'ok');
     render();
@@ -317,11 +431,16 @@ function onPersonListClick(event) {
   if (action === 'remove-block') {
     const from = button.dataset.from;
     const to = button.dataset.to;
+    const inBlock = d => d >= from && d <= to && !isPast(d);
+    if (person.days.some(d => inBlock(d) && statusOf(person, d) === 'ok')) {
+      if (!confirm('Dieser Urlaub ist schon genehmigt. Trotzdem löschen?')) return;
+    }
     const before = person.days.length;
-    person.days = person.days.filter(d => d < from || d > to);
+    removeDays(person, inBlock);
     const removed = before - person.days.length;
     saveState();
-    showMsg(msg, daysText(removed) + ' von ' + person.name + ' gelöscht. Rest: ' + remaining(person) + '.', 'ok');
+    showMsg(msg, daysText(removed) + ' von ' + person.name + ' gelöscht. Rest: ' + remaining(person) + '.' +
+      (person.days.some(d => d >= from && d <= to) ? ' Vergangene Tage bleiben stehen.' : ''), 'ok');
     render();
   }
 }
@@ -335,31 +454,49 @@ function renderPersons() {
     return;
   }
 
+  const adminAllowed = canChangeAdmin();
+
   list.innerHTML = state.persons.map(p => {
     const taken = p.days.length;
+    const approved = p.approved.length;
     const rest = remaining(p);
     const id = escapeHtml(p.id);
     const name = escapeHtml(p.name);
-    const blocks = vacationBlocks(p.days);
+    const blocks = vacationBlocks(p);
+
     const entries = blocks.map(b => {
-      const range = b.from === b.to ? formatDate(b.from) : formatDate(b.from) + ' – ' + formatDate(b.to);
-      return '<li><span>' + range + ' · ' + daysText(b.count) + '</span>' +
-        '<button type="button" class="secondary danger" data-action="remove-block" data-id="' + id +
-        '" data-from="' + b.from + '" data-to="' + b.to + '" aria-label="Urlaub ' + range + ' von ' + name +
-        ' löschen">Löschen</button></li>';
+      const range = formatRange(b.from, b.to);
+      const canDelete = b.days.some(d => !isPast(d));
+      return '<li><span>' + range + ' · ' + daysText(b.days.length) + ' ' + statusBadge(b.status) + '</span>' +
+        (canDelete
+          ? '<button type="button" class="secondary danger" data-action="remove-block" data-id="' + id +
+            '" data-from="' + b.from + '" data-to="' + b.to + '" aria-label="Urlaub ' + range + ' von ' + name +
+            ' löschen">Löschen</button>'
+          : '<span class="locked">vergangen</span>') +
+        '</li>';
     }).join('');
+
+    const adminButton = '<button type="button" class="secondary" data-action="toggle-admin" data-id="' + id + '"' +
+      ' aria-pressed="' + p.admin + '"' +
+      (adminAllowed ? '' : ' disabled title="Nur ein Admin darf Admins bestimmen."') + '>' +
+      (p.admin ? 'Admin entfernen' : 'Zum Admin machen') + '</button>';
 
     return '<li class="person">' +
       '<div class="person-head">' +
-        '<span class="person-name">' + name + '</span>' +
+        avatarHtml(p) +
+        '<span class="person-name">' + name + (p.admin ? ' <span class="badge badge-admin">Admin</span>' : '') + '</span>' +
         '<span class="person-count' + (rest === 0 ? ' none' : '') + '">' + taken + ' von ' + ALLOWANCE +
-          ' genommen · Rest ' + rest + '</span>' +
+          ' (' + approved + ' genehmigt) · Rest ' + rest + '</span>' +
         '<span class="person-actions">' +
           '<button type="button" class="secondary" data-action="rename" data-id="' + id + '">Umbenennen</button>' +
+          adminButton +
           '<button type="button" class="secondary danger" data-action="delete" data-id="' + id + '">Löschen</button>' +
         '</span>' +
       '</div>' +
-      '<div class="bar" aria-hidden="true"><span style="width:' + Math.round(taken / ALLOWANCE * 100) + '%"></span></div>' +
+      '<div class="bar" aria-hidden="true">' +
+        '<span class="bar-ok" style="width:' + Math.round(approved / ALLOWANCE * 100) + '%"></span>' +
+        '<span class="bar-pend" style="width:' + Math.round((taken - approved) / ALLOWANCE * 100) + '%"></span>' +
+      '</div>' +
       (blocks.length
         ? '<details data-id="' + id + '"' + (openIds.has(p.id) ? ' open' : '') + '><summary>Einträge (' +
           blocks.length + ')</summary><ul class="entries">' + entries + '</ul></details>'
@@ -373,7 +510,7 @@ function renderPersons() {
    ========================================================= */
 function renderPersonSelect() {
   const select = $('vac-person');
-  const current = select.value;
+  const current = select.value || state.currentId;
   if (state.persons.length === 0) {
     select.innerHTML = '<option value="">Erst eine Person anlegen</option>';
     select.disabled = true;
@@ -388,6 +525,12 @@ function renderPersonSelect() {
   if (findPerson(current)) select.value = current;
 }
 
+/* Frühester Tag, der noch gewählt werden darf */
+function firstAllowedDay() {
+  const today = todayIso();
+  return today > isoDate(0, 1) ? today : isoDate(0, 1);
+}
+
 function readVacationForm() {
   const person = findPerson($('vac-person').value);
   const fromText = $('vac-from').value.trim();
@@ -400,6 +543,9 @@ function readVacationForm() {
   if (!from || !to) return { error: 'Bitte das Datum so eingeben: TT.MM.JJJJ (zum Beispiel 15.03.2027).' };
   if (!isInYear(from) || !isInYear(to)) return { error: 'Bitte nur Tage im Jahr ' + YEAR + ' wählen.' };
   if (to < from) return { error: 'Das Enddatum liegt vor dem Startdatum.' };
+  if (isPast(from)) {
+    return { error: 'Vergangene Tage können nicht mehr gewählt werden. Frühestens: ' + formatDate(firstAllowedDay()) + '.' };
+  }
 
   return { person, from, to, newDays: newDaysInRange(person, from, to) };
 }
@@ -454,12 +600,13 @@ function onAddVacation(event) {
     return;
   }
 
-  r.person.days = [...r.person.days, ...r.newDays].sort();
+  addDays(r.person, r.newDays);
   saveState();
 
   const abs = absences(state.persons);
   const critical = r.newDays.filter(d => abs.get(d).length >= CRITICAL_FROM).length;
-  let text = daysText(n) + ' für ' + r.person.name + ' eingetragen. Rest: ' + remaining(r.person) + '.';
+  let text = daysText(n) + ' für ' + r.person.name + ' als Wunsch eingetragen (noch nicht genehmigt). Rest: ' +
+    remaining(r.person) + '.';
   if (critical > 0) {
     text += ' Achtung: ' + (critical === 1 ? '1 Tag ist' : critical + ' Tage sind') + ' jetzt kritisch.';
   }
@@ -485,6 +632,72 @@ function renderCritical() {
 }
 
 /* =========================================================
+   Admin-Bereich
+   ========================================================= */
+function wishItem(wish, withActions) {
+  const p = wish.person;
+  const range = formatRange(wish.from, wish.to);
+  const data = ' data-id="' + escapeHtml(p.id) + '" data-from="' + wish.from + '" data-to="' + wish.to + '"';
+  return '<li class="wish">' +
+    avatarHtml(p) +
+    '<span class="wish-text"><strong>' + escapeHtml(p.name) + '</strong><span>' + range + ' · ' +
+      daysText(wish.days.length) + '</span></span>' +
+    statusBadge(wish.status) +
+    (withActions
+      ? '<span class="wish-actions">' +
+          '<button type="button" class="approve" data-action="approve"' + data +
+            ' aria-label="Urlaub von ' + escapeHtml(p.name) + ', ' + range + ' genehmigen">Genehmigen</button>' +
+          '<button type="button" class="secondary danger" data-action="reject"' + data +
+            ' aria-label="Urlaub von ' + escapeHtml(p.name) + ', ' + range + ' ablehnen">Ablehnen</button>' +
+        '</span>'
+      : '') +
+    '</li>';
+}
+
+function renderAdmin() {
+  const section = $('admin-section');
+  section.hidden = !isAdminUser();
+  if (section.hidden) return;
+
+  const pending = allWishes('pend');
+  const approved = allWishes('ok');
+  $('pending-count').textContent = pending.length;
+  $('pending-list').innerHTML = pending.length
+    ? pending.map(w => wishItem(w, true)).join('')
+    : '<li class="empty">Keine offenen Urlaubswünsche.</li>';
+  $('approved-list').innerHTML = approved.length
+    ? approved.map(w => wishItem(w, false)).join('')
+    : '<li class="empty">Noch nichts genehmigt.</li>';
+}
+
+function onAdminClick(event) {
+  const button = event.target.closest('button[data-action]');
+  if (!button || !isAdminUser()) return;
+  const person = findPerson(button.dataset.id);
+  if (!person) return;
+  const from = button.dataset.from;
+  const to = button.dataset.to;
+  const range = formatRange(from, to);
+  const msg = $('admin-msg');
+
+  if (button.dataset.action === 'approve') {
+    const days = person.days.filter(d => d >= from && d <= to);
+    person.approved = [...new Set([...person.approved, ...days])].sort();
+    saveState();
+    showMsg(msg, 'Urlaub von ' + person.name + ' (' + range + ') ist genehmigt.', 'ok');
+    render();
+  }
+
+  if (button.dataset.action === 'reject') {
+    if (!confirm('Urlaubswunsch von ' + person.name + ' (' + range + ') ablehnen?\nDie Tage werden gelöscht und gehen zurück aufs Urlaubskonto.')) return;
+    removeDays(person, d => d >= from && d <= to && statusOf(person, d) === 'pend');
+    saveState();
+    showMsg(msg, 'Urlaub von ' + person.name + ' (' + range + ') wurde abgelehnt. Rest: ' + remaining(person) + '.', 'ok');
+    render();
+  }
+}
+
+/* =========================================================
    Übersicht (12 Monatstabellen)
    ========================================================= */
 function dayInfo(day, abs) {
@@ -496,6 +709,7 @@ function dayInfo(day, abs) {
     weekend: isWeekend(day),
     holiday: isHoliday(day) ? HOLIDAYS[day] : '',
     school: schoolHoliday(day),
+    past: isPast(day),
     count: names.length,
     critical: names.length >= CRITICAL_FROM
   };
@@ -504,6 +718,7 @@ function dayInfo(day, abs) {
   if (info.critical) cls.push('crit');
   if (info.weekend) cls.push('we');
   if (info.holiday) cls.push('hol');
+  if (info.past) cls.push('past');
   info.cls = cls.join(' ');
   return info;
 }
@@ -516,7 +731,6 @@ function renderOverview() {
   }
 
   const abs = absences(state.persons);
-  const daySets = new Map(state.persons.map(p => [p.id, new Set(p.days)]));
   let html = '';
 
   for (let m = 0; m < 12; m++) {
@@ -528,7 +742,7 @@ function renderOverview() {
       '<th scope="col" class="name-col">Person</th>';
 
     for (const i of infos) {
-      const title = [i.holiday, i.school ? i.school.name : '', i.critical ? 'Kritisch' : '']
+      const title = [i.holiday, i.school ? i.school.name : '', i.critical ? 'Kritisch' : '', i.past ? 'Vergangen' : '']
         .filter(Boolean).join(' · ');
       html += '<th scope="col" class="' + i.cls + '"' + (title ? ' title="' + escapeHtml(title) + '"' : '') + '>' +
         '<span class="d">' + i.num + '</span><span class="wd">' + i.wd + '</span></th>';
@@ -536,17 +750,26 @@ function renderOverview() {
     html += '</tr></thead><tbody>';
 
     for (const p of state.persons) {
-      const set = daySets.get(p.id);
+      const days = new Set(p.days);
+      const approved = new Set(p.approved);
       html += '<tr><th scope="row" class="name-col" title="' + escapeHtml(p.name) + '">' + escapeHtml(p.name) + '</th>';
       for (const i of infos) {
         if (i.weekend || i.holiday) {
           html += '<td class="' + i.cls + '">' + (i.holiday ? 'F' : '') + '</td>';
+          continue;
+        }
+        const status = days.has(i.day) ? (approved.has(i.day) ? 'ok' : 'pend') : '';
+        if (i.past) {
+          /* Vergangen: nur anzeigen, nicht mehr änderbar */
+          html += '<td class="' + i.cls + (status ? ' v-' + status : '') + '"' +
+            (status ? ' title="Urlaub (' + STATUS_TEXT[status] + '), vergangen"' : '') + '>' +
+            (status ? STATUS_SYMBOL[status] : '') + '</td>';
         } else {
-          const on = set.has(i.day);
-          const label = p.name + ', ' + formatDateLong(i.day) + ': ' + (on ? 'Urlaub' : 'kein Urlaub');
-          html += '<td class="' + i.cls + '"><button type="button" class="cell' + (on ? ' on' : '') +
-            '" data-id="' + escapeHtml(p.id) + '" data-day="' + i.day + '" aria-pressed="' + on +
-            '" aria-label="' + escapeHtml(label) + '">' + (on ? 'U' : '') + '</button></td>';
+          const label = p.name + ', ' + formatDateLong(i.day) + ': ' +
+            (status ? 'Urlaub (' + STATUS_TEXT[status] + ')' : 'kein Urlaub');
+          html += '<td class="' + i.cls + '"><button type="button" class="cell' + (status ? ' v-' + status : '') +
+            '" data-id="' + escapeHtml(p.id) + '" data-day="' + i.day + '" aria-pressed="' + !!status +
+            '" aria-label="' + escapeHtml(label) + '">' + (status ? STATUS_SYMBOL[status] : '') + '</button></td>';
         }
       }
       html += '</tr>';
@@ -577,15 +800,20 @@ function onOverviewClick(event) {
   const person = findPerson(button.dataset.id);
   const day = button.dataset.day;
   if (!person || !isWorkday(day)) return;
+  if (isPast(day)) {
+    showToast('Vergangene Tage können nicht mehr geändert werden.', true);
+    return;
+  }
 
   if (person.days.includes(day)) {
-    person.days = person.days.filter(d => d !== day);
+    if (statusOf(person, day) === 'ok' && !confirm('Dieser Tag ist schon genehmigt. Trotzdem löschen?')) return;
+    removeDays(person, d => d === day);
   } else {
     if (remaining(person) <= 0) {
       showToast(person.name + ' hat keinen Resturlaub mehr.', true);
       return;
     }
-    person.days = [...person.days, day].sort();
+    addDays(person, [day]);
     const count = absences(state.persons).get(day).length;
     if (count >= CRITICAL_FROM) {
       showToast('Achtung: Am ' + formatDate(day) + ' sind jetzt ' + count + ' Personen im Urlaub.', true);
@@ -603,9 +831,11 @@ function onOverviewClick(event) {
    Start
    ========================================================= */
 function render() {
+  renderWhoAmI();
   renderPersons();
   renderPersonSelect();
   renderCritical();
+  renderAdmin();
   renderOverview();
   updatePreview();
 }
@@ -613,9 +843,11 @@ function render() {
 function init() {
   state = loadState();
 
+  $('whoami').addEventListener('change', onWhoAmIChange);
   $('person-form').addEventListener('submit', onAddPerson);
   $('person-list').addEventListener('click', onPersonListClick);
   $('vacation-form').addEventListener('submit', onAddVacation);
+  $('admin-section').addEventListener('click', onAdminClick);
   $('overview').addEventListener('click', onOverviewClick);
 
   for (const id of ['vac-person', 'vac-from', 'vac-to']) {
@@ -669,9 +901,10 @@ function initPicker() {
 
 function openPicker(inputId) {
   const input = $(inputId);
-  /* Startmonat: gewähltes Datum, sonst "Von"-Datum, sonst Januar */
+  /* Startmonat: gewähltes Datum, sonst "Von"-Datum, sonst heute (bzw. Januar) */
   const start = parseGermanDate(input.value) || parseGermanDate($('vac-from').value);
-  const startDay = start && isInYear(start) ? start : isoDate(0, 1);
+  const fallback = isInYear(firstAllowedDay()) ? firstAllowedDay() : isoDate(11, 31);
+  const startDay = start && isInYear(start) ? start : fallback;
 
   picker.inputId = inputId;
   picker.month = Number(startDay.slice(5, 7)) - 1;
@@ -723,19 +956,22 @@ function renderPicker(moveFocus) {
     const day = isoDate(m, d);
     const school = schoolHoliday(day);
     const holiday = isHoliday(day) ? HOLIDAYS[day] : '';
+    const past = isPast(day);
     if (holiday) holidays.push(d + '. ' + holiday);
 
     const cls = ['pday'];
     if (school) cls.push('school');
     if (isWeekend(day)) cls.push('we');
     if (holiday) cls.push('hol');
+    if (past) cls.push('past');
     if (from && to && day >= from && day <= to) cls.push('in-range');
     if (day === selected) cls.push('selected');
 
-    const info = [holiday, school ? school.name : ''].filter(Boolean).join(', ');
+    const info = [holiday, school ? school.name : '', past ? 'vergangen, nicht wählbar' : ''].filter(Boolean).join(', ');
     const label = formatDateLong(day) + (info ? ' – ' + info : '');
     html += '<button type="button" class="' + cls.join(' ') + '" data-day="' + day + '"' +
       ' tabindex="' + (day === picker.focusDay ? '0' : '-1') + '"' +
+      (past ? ' aria-disabled="true"' : '') +
       ' aria-label="' + escapeHtml(label) + '"' + (info ? ' title="' + escapeHtml(info) + '"' : '') + '>' +
       d + (holiday ? '<span class="mark" aria-hidden="true">F</span>' : '') + '</button>';
   }
@@ -763,6 +999,7 @@ function onPickerKey(event) {
 }
 
 function choosePickerDay(day) {
+  if (isPast(day)) return;   // vergangene Tage sind gesperrt
   const inputId = picker.inputId;
   $(inputId).value = formatDate(day);
   closePicker(true);

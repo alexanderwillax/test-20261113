@@ -12,7 +12,11 @@ Sie warnt, wenn zu viele Personen gleichzeitig weg sind.
 
 - Ein kleines Team mit **bis zu 10 Personen**.
 - Alle benutzen **denselben Computer** und denselben Browser.
-- Es gibt **keine Anmeldung** und keine Rollen. Jeder darf alles sehen und ändern.
+- Es gibt **keine Anmeldung** und kein Passwort. Oben wählt man bei „Wer bist du?“ seinen Namen.
+- Es gibt zwei Rollen:
+  - **Teammitglied:** trägt Urlaubswünsche ein.
+  - **Admin:** sieht zusätzlich den Admin-Bereich und genehmigt oder lehnt Wünsche ab.
+- Die Rollen sind **kein Schutz**. Jeder am Computer kann einen anderen Namen auswählen.
 
 ## 3. Funktionen
 
@@ -31,6 +35,12 @@ Sie warnt, wenn zu viele Personen gleichzeitig weg sind.
 | M9 | Monatsübersicht | 12 Tabellen, eine pro Monat. Zeilen = Personen, Spalten = Tage. Urlaub ist farbig, also auf einen Blick zu sehen. |
 | M10 | Kalender markieren | In der Übersicht sind Wochenenden, Feiertage und Schulferien unterschiedlich markiert. |
 | M11 | Speichern | Alle Daten bleiben im Browser gespeichert und sind auch nach dem Neuladen noch da. |
+| M12 | Vergangene Tage gesperrt | Tage vor heute kann man weder neu eintragen noch löschen: nicht im Formular, nicht in der Kalenderauswahl, nicht in der Übersicht. Ausnahme: Eine Person wird ganz gelöscht. |
+| M13 | Wer bist du? | Auswahl des eigenen Namens oben auf der Seite. Das Formular „Urlaub eintragen“ wählt dann diese Person vor. |
+| M14 | Admin bestimmen | In der Personenliste kann eine Person zum Admin gemacht werden. Gibt es noch keinen Admin, darf das jeder. Gibt es schon einen, darf das nur ein Admin. Mehrere Admins sind möglich. |
+| M15 | Admin-Bereich | Nur sichtbar, wenn bei „Wer bist du?“ ein Admin gewählt ist. Er zeigt eine Liste aller offenen und aller genehmigten Urlaubswünsche. |
+| M16 | Genehmigen / Ablehnen | Der Admin genehmigt einen offenen Wunsch, oder er lehnt ihn ab. Beim Ablehnen werden die Tage gelöscht und gehen zurück aufs Urlaubskonto. |
+| M17 | Status sichtbar | Jeder neue Urlaubstag ist zuerst **offen**: gestreift mit „?“. Genehmigt: kräftig türkis mit „✓“. Der Status steht auch in der Personenliste („offen“ / „genehmigt“). |
 
 ### 3.2 Soll
 
@@ -38,15 +48,18 @@ Sie warnt, wenn zu viele Personen gleichzeitig weg sind.
 |---|---|---|
 | S1 | Kritische Tage | Sind an einem Arbeitstag **3 oder mehr Personen** im Urlaub, wird dieser Tag deutlich **rot** als „kritisch“ markiert. Eintragen bleibt trotzdem erlaubt. |
 | S2 | Liste kritischer Tage | Die App zeigt eine kurze Liste aller kritischen Tage und nennt dazu die Personen. |
-| S3 | Legende | Eine Erklärung der Farben (Urlaub, Wochenende, Feiertag, Schulferien, kritisch). |
+| S3 | Legende | Eine Erklärung der Farben (Urlaub offen, Urlaub genehmigt, vergangen, Wochenende, Feiertag, Schulferien, kritisch). |
+
+Hinweis: Offene **und** genehmigte Tage zählen beide für das Urlaubskonto und für kritische Tage.
 
 ### 3.3 Bewusst nicht
 
-- Kein Server, keine Datenbank, keine Anmeldung, kein Passwort.
+- Kein Server, keine Datenbank, keine echte Anmeldung, kein Passwort.
 - Kein gemeinsames Arbeiten von verschiedenen Geräten aus.
 - Keine halben Urlaubstage.
 - Keine anderen Jahre als 2027 und kein Übertrag von Resturlaub.
-- Kein Genehmigungsablauf (beantragt / genehmigt / abgelehnt).
+- Kein Status „abgelehnt“: Abgelehnte Wünsche werden gelöscht.
+- Keine Benachrichtigung (zum Beispiel per E-Mail) bei Genehmigung oder Ablehnung.
 - Keine anderen Abwesenheiten wie Krankheit oder Fortbildung.
 - Keine unterschiedlichen Urlaubsansprüche (alle haben 30 Tage).
 - Kein Export und Import von Dateien.
@@ -55,8 +68,12 @@ Sie warnt, wenn zu viele Personen gleichzeitig weg sind.
 
 ### 4.1 Gespeicherte Daten (im Browser, `localStorage`)
 
-- **Person:** eindeutige ID, Name (Pflichtfeld, höchstens 30 Zeichen)
+- **Person:** eindeutige ID, Name (Pflichtfeld, höchstens 30 Zeichen), Admin (ja/nein)
 - **Urlaubstage:** pro Person eine Liste von Daten (Format `JJJJ-MM-TT`)
+- **Genehmigte Tage:** pro Person eine Liste der Tage, die genehmigt sind. Alle anderen Urlaubstage sind „offen“.
+- **Wer bist du?:** die ID der gerade gewählten Person
+
+Ein **Urlaubswunsch** ist ein Block aus Urlaubstagen mit gleichem Status, zwischen denen nur Wochenenden oder Feiertage liegen.
 
 Es werden nur Urlaubstage gespeichert, die Urlaub **kosten**, also nur Arbeitstage.
 Wird ein Zeitraum über ein Wochenende eingetragen, werden Wochenende und Feiertage nicht mitgespeichert.
@@ -106,17 +123,20 @@ Beide fallen 2027 auf einen Sonntag. Für die Rechnung macht das also keinen Unt
 
 Eine einzige Seite mit diesen Bereichen von oben nach unten:
 
-1. **Kopf:** Titel „Urlaubsplaner 2027“
-2. **Personen:** Liste mit Name, genommen, Rest (zum Beispiel „12 / 30, Rest 18“). Dazu Knöpfe für Anlegen, Umbenennen und Löschen.
-3. **Urlaub eintragen:** Formular mit Person, Von, Bis und dem Knopf „Eintragen“. Vor dem Speichern zeigt es an, wie viele Urlaubstage das kostet und welche Feiertage im Zeitraum liegen.
+1. **Kopf:** Titel „Urlaubsplaner 2027“ mit Urlaubsbild (Sonne, Berge, Meer, Strand)
+2. **Wer bist du?:** Auswahl des eigenen Namens und Anzeige der Rolle (Admin / Teammitglied)
+3. **Personen:** Liste mit Name, genommen, davon genehmigt, Rest (zum Beispiel „12 von 30 (8 genehmigt) · Rest 18“). Dazu Knöpfe für Anlegen, Umbenennen, Admin und Löschen.
+4. **Urlaub eintragen:** Formular mit Person, Von, Bis und dem Knopf „Eintragen“. Vor dem Speichern zeigt es an, wie viele Urlaubstage das kostet und welche Feiertage im Zeitraum liegen.
    - Datum eintippen (TT.MM.JJJJ) oder über eine eigene Kalenderauswahl wählen.
    - In der Kalenderauswahl sind Feiertage (gelb, „F“), Wochenenden (grau) und Schulferien (grün) farbig markiert. Unter dem Monat stehen die Namen der Feiertage.
-4. **Kritische Tage:** Liste (nur sichtbar, wenn es welche gibt)
-5. **Legende:** Farben erklärt
-6. **Übersicht:** 12 Monatstabellen untereinander
+5. **Kritische Tage:** Liste (nur sichtbar, wenn es welche gibt)
+6. **Admin-Bereich:** nur für Admins. Liste „Offene Urlaubswünsche“ mit den Knöpfen Genehmigen und Ablehnen, darunter die Liste „Genehmigte Urlaubswünsche“.
+7. **Legende:** Farben erklärt
+8. **Übersicht:** 12 Monatstabellen untereinander
    - Zeilen = Personen, Spalten = Tage 1 bis 28/29/30/31
    - Kopfzeile mit Tag und Wochentag (zum Beispiel „1 Fr“)
-   - Zelle mit Urlaub: kräftige Farbe
+   - Zelle mit Urlaub: offen = gestreift mit „?“, genehmigt = kräftig mit „✓“
+   - Vergangene Tage: blass und nicht anklickbar
    - Wochenende: grau, Feiertag: eigene Farbe, Schulferien: leichte Hintergrundfarbe
    - Kritischer Tag: Spalte rot markiert
    - Unter jeder Monatstabelle: Liste der Feiertage dieses Monats mit Namen
@@ -126,7 +146,7 @@ Allgemein:
 - Alle Texte auf Deutsch, in einfacher Sprache.
 - Fehler und Hinweise erscheinen gut sichtbar neben der Eingabe.
 - Gut zu bedienen am Computer-Bildschirm. Am Handy dürfen die Tabellen seitlich scrollen.
-- Farben nicht als einziges Zeichen: Urlaub und kritische Tage bekommen zusätzlich ein Zeichen (zum Beispiel „U“ und „!“).
+- Farben nicht als einziges Zeichen: Urlaub und kritische Tage bekommen zusätzlich ein Zeichen („?“, „✓“ und „!“).
 
 ## 6. Technik und Grenzen
 
@@ -139,7 +159,8 @@ Allgemein:
 - Die Daten liegen **nur in diesem Browser auf diesem Computer**.
   Ein anderer Browser oder ein anderer Computer sieht sie nicht.
 - Wer den Browserverlauf beziehungsweise die Website-Daten löscht, löscht **auch alle Urlaubsdaten**.
-- Es gibt keinen Schutz: Jeder am Computer kann alle Einträge ändern.
+- Es gibt keinen Schutz: Jeder am Computer kann alle Einträge ändern und sich als Admin auswählen.
+- „Heute“ kommt von der Uhr des Computers. Ist sie falsch eingestellt, sind die falschen Tage gesperrt.
 - Die App funktioniert nur für 2027. Für ein anderes Jahr müssen Feiertage und Ferien im Code geändert werden.
 
 ## 7. Abnahme (so prüfen wir, ob alles stimmt)
@@ -155,9 +176,18 @@ Allgemein:
 | A7 | Ben hat genau 30 Tage, klickt einen weiteren Tag an | Wird nicht eingetragen, Hinweis erscheint. |
 | A8 | 2 Personen am Mi 10.03. im Urlaub | Tag ist **nicht** kritisch. |
 | A9 | 3 Personen am Mi 10.03. im Urlaub | Tag ist rot markiert und steht in der Liste „Kritische Tage“ mit den 3 Namen. |
-| A10 | Klick auf einen Urlaubstag in der Übersicht | Urlaub wird entfernt, der Rest steigt um 1. |
+| A10 | Klick auf einen (offenen) Urlaubstag in der Übersicht | Urlaub wird entfernt, der Rest steigt um 1. |
 | A11 | Klick auf einen Samstag oder Feiertag | Nichts passiert. |
 | A12 | Seite neu laden | Alle Personen und Urlaubstage sind noch da. |
 | A13 | Person löschen | Rückfrage erscheint. Nach „Ja“ sind Person und Urlaub weg, kritische Tage werden neu berechnet. |
 | A14 | Übersicht ansehen | 12 Monate. Wochenenden, Feiertage und Schulferien sind unterschiedlich markiert. Die Legende passt dazu. |
 | A15 | Dateien ansehen | Keine externen Links zu Bibliotheken, keine Passwörter oder Schlüssel. |
+| A16 | Neuen Urlaub eintragen | Er erscheint als „offen“ (gestreift, „?“). |
+| A17 | Noch kein Admin: Person „Chef“ → „Zum Admin machen“ | Chef ist Admin, Abzeichen „Admin“ erscheint. |
+| A18 | „Wer bist du?“ = Anna (kein Admin) | Kein Admin-Bereich. Der Knopf „Zum Admin machen“ ist gesperrt. |
+| A19 | „Wer bist du?“ = Chef | Admin-Bereich erscheint mit allen offenen Wünschen. |
+| A20 | Chef klickt „Genehmigen“ bei Anna | Annas Tage sind „genehmigt“ (türkis, „✓“) und stehen unter „Genehmigte Urlaubswünsche“. |
+| A21 | Chef klickt „Ablehnen“ bei Ben | Rückfrage. Danach sind Bens Tage gelöscht, sein Rest steigt wieder. |
+| A22 | Heute ist der 17.03.: Urlaub ab 16.03. eintragen | Nicht erlaubt. Hinweis „Vergangene Tage können nicht mehr gewählt werden“. |
+| A23 | Heute ist der 17.03.: Übersicht und Kalenderauswahl ansehen | Tage vor dem 17.03. sind blass und lassen sich nicht anklicken. |
+| A24 | Urlaub, der teils in der Vergangenheit liegt, löschen | Nur die Tage ab heute werden gelöscht. Vergangene Tage bleiben stehen. |
