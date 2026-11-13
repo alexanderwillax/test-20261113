@@ -3,9 +3,78 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Helloo</title>
+  <title>Urlaubsplaner 2027</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>Helloo</h1>
+  <header class="page-header">
+    <h1>Urlaubsplaner 2027</h1>
+    <p>Bis zu 10 Personen · 30 Urlaubstage pro Person · Feiertage und Schulferien in Bayern</p>
+  </header>
+
+  <main>
+    <div class="top-grid">
+      <!-- Personen -->
+      <section class="card" aria-labelledby="h-persons">
+        <h2 id="h-persons">Personen</h2>
+        <form id="person-form" class="row-form" novalidate>
+          <label for="person-name">Name</label>
+          <input id="person-name" type="text" maxlength="30" autocomplete="off">
+          <button type="submit">Person anlegen</button>
+        </form>
+        <p id="person-msg" class="msg" role="status" aria-live="polite"></p>
+        <ul id="person-list" class="person-list"></ul>
+      </section>
+
+      <!-- Urlaub eintragen -->
+      <section class="card" aria-labelledby="h-vacation">
+        <h2 id="h-vacation">Urlaub eintragen</h2>
+        <form id="vacation-form" novalidate>
+          <div class="field">
+            <label for="vac-person">Person</label>
+            <select id="vac-person"></select>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="vac-from">Von</label>
+              <input id="vac-from" type="date" min="2027-01-01" max="2027-12-31">
+            </div>
+            <div class="field">
+              <label for="vac-to">Bis</label>
+              <input id="vac-to" type="date" min="2027-01-01" max="2027-12-31">
+            </div>
+          </div>
+          <p id="vac-preview" class="preview" aria-live="polite"></p>
+          <button id="vac-submit" type="submit">Eintragen</button>
+        </form>
+        <p id="vac-msg" class="msg" role="status" aria-live="polite"></p>
+      </section>
+    </div>
+
+    <!-- Kritische Tage -->
+    <section id="critical-section" class="card critical-card" aria-labelledby="h-critical" hidden>
+      <h2 id="h-critical">Kritische Tage</h2>
+      <p>An diesen Arbeitstagen sind 3 oder mehr Personen im Urlaub.</p>
+      <ul id="critical-list" class="critical-list"></ul>
+    </section>
+
+    <!-- Übersicht -->
+    <section class="card" aria-labelledby="h-overview">
+      <h2 id="h-overview">Übersicht</h2>
+      <p class="hint">Klicke auf ein Feld, um Urlaub für diesen Tag ein- oder auszutragen.</p>
+      <ul class="legend" aria-label="Legende">
+        <li><span class="sw sw-vac">U</span> Urlaub</li>
+        <li><span class="sw sw-we"></span> Wochenende</li>
+        <li><span class="sw sw-hol">F</span> Feiertag</li>
+        <li><span class="sw sw-school"></span> Schulferien</li>
+        <li><span class="sw sw-crit">!</span> Kritisch (3 oder mehr Personen)</li>
+      </ul>
+      <div id="overview"></div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="app.js"></script>
 </body>
 </html>
