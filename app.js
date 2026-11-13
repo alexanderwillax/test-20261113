@@ -122,15 +122,18 @@ function formatDate(text) {
 
 /* "TT.MM.JJJJ" (oder "JJJJ-MM-TT") in "JJJJ-MM-TT" umwandeln. Ungültig: '' */
 function parseGermanDate(text) {
-  const value = text.trim();
+  let value = text.trim();
   let y, m, d;
-  let match = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(value);
+  let match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (match) {
-    [, d, m, y] = match.map(Number);
-  } else {
-    match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-    if (!match) return '';
     [, y, m, d] = match.map(Number);
+  } else {
+    /* Auch erlaubt (praktisch am Handy): 15,03,2027 oder 15032027 */
+    value = value.replace(/[,/ -]/g, '.');
+    if (/^\d{8}$/.test(value)) value = value.slice(0, 2) + '.' + value.slice(2, 4) + '.' + value.slice(4);
+    match = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(value);
+    if (!match) return '';
+    [, d, m, y] = match.map(Number);
   }
   const date = new Date(Date.UTC(y, m - 1, d));
   if (date.getUTCFullYear() !== y || date.getUTCMonth() !== m - 1 || date.getUTCDate() !== d) return '';
@@ -710,8 +713,21 @@ function dayInfo(day, abs) {
   if (info.weekend) cls.push('we');
   if (info.holiday) cls.push('hol');
   if (info.past) cls.push('past');
+  if (day === todayIso()) cls.push('today');
   info.cls = cls.join(' ');
   return info;
+}
+
+/* Handy: Auswahl des angezeigten Monats */
+function monthNavHtml(m) {
+  return '<div class="month-nav">' +
+    '<button type="button" class="month-step" data-step="-1" aria-label="Vorheriger Monat"' + (m === 0 ? ' disabled' : '') + '>‹</button>' +
+    '<label class="sr-only" for="month-select">Monat</label>' +
+    '<select id="month-select">' +
+      MONTHS.map((name, i) => '<option value="' + i + '"' + (i === m ? ' selected' : '') + '>' + name + ' ' + YEAR + '</option>').join('') +
+    '</select>' +
+    '<button type="button" class="month-step" data-step="1" aria-label="Nächster Monat"' + (m === 11 ? ' disabled' : '') + '>›</button>' +
+    '</div>';
 }
 
 function renderOverview() {
@@ -721,10 +737,15 @@ function renderOverview() {
     return;
   }
 
-  const abs = absences(state.persons);
-  let html = '';
+  /* Seitliche Scroll-Position der Tabellen merken (sonst springt sie nach jedem Klick an den Anfang) */
+  const scrolls = [...box.querySelectorAll('.table-wrap')].map(w => w.scrollLeft);
 
-  for (let m = 0; m < 12; m++) {
+  const abs = absences(state.persons);
+  /* Computer: alle 12 Monate. Handy: ein Monat mit Vor/Zurück. */
+  const months = isMobile ? [currentMobileMonth()] : [...Array(12).keys()];
+  let html = isMobile ? monthNavHtml(months[0]) : '';
+
+  for (const m of months) {
     const infos = [];
     for (let d = 1; d <= daysInMonth(m); d++) infos.push(dayInfo(isoDate(m, d), abs));
 
@@ -783,9 +804,24 @@ function renderOverview() {
   }
 
   box.innerHTML = html;
+
+  const wraps = [...box.querySelectorAll('.table-wrap')];
+  if (isMobile && scrollToToday) {
+    /* Handy: zum heutigen Tag scrollen */
+    scrollToToday = false;
+    const th = box.querySelector('thead th.today');
+    if (th && wraps[0]) wraps[0].scrollLeft = Math.max(0, th.offsetLeft - 120);
+  } else {
+    wraps.forEach((w, i) => { if (scrolls[i]) w.scrollLeft = scrolls[i]; });
+  }
 }
 
 function onOverviewClick(event) {
+  const step = event.target.closest('button.month-step');
+  if (step) {
+    setMobileMonth(currentMobileMonth() + Number(step.dataset.step));
+    return;
+  }
   const button = event.target.closest('button.cell');
   if (!button) return;
   const person = findPerson(button.dataset.id);
@@ -819,10 +855,87 @@ function onOverviewClick(event) {
 }
 
 /* =========================================================
+   Handy-Ansicht
+   Die App erkennt selbst, ob sie auf einem Smartphone läuft:
+   schmaler Bildschirm (bis 760 px) oder Touch-Gerät im Querformat
+   (wenig Höhe). Dann gibt es unten eine Leiste mit Bereichen und
+   die Übersicht zeigt einen Monat auf einmal.
+   ========================================================= */
+const MOBILE_QUERY = '(max-width: 760px), (pointer: coarse) and (max-height: 500px)';
+let isMobile = false;
+let mobileTab = null;        // 'cal' | 'add' | 'persons' | 'admin'
+let mobileMonth = null;      // angezeigter Monat (0–11)
+let scrollToToday = true;
+
+function applyDeviceMode() {
+  isMobile = window.matchMedia(MOBILE_QUERY).matches;
+  document.documentElement.classList.toggle('mobile', isMobile);
+}
+
+function currentMobileMonth() {
+  if (mobileMonth === null) {
+    const today = todayIso();
+    mobileMonth = isInYear(today) ? Number(today.slice(5, 7)) - 1 : 0;
+  }
+  return mobileMonth;
+}
+
+function setMobileMonth(m) {
+  mobileMonth = Math.min(11, Math.max(0, m));
+  scrollToToday = true;
+  renderOverview();
+}
+
+/* Welcher Bereich ist auf dem Handy offen? Passt auch "view" (Planung/Admin) an. */
+function syncMobileTab() {
+  if (!isMobile) return;
+  if (!mobileTab) mobileTab = state.persons.length ? 'cal' : 'persons';
+  if (mobileTab === 'admin' && !hasAdmin()) mobileTab = 'cal';
+  view = mobileTab === 'admin' ? 'admin' : 'plan';
+}
+
+function renderTabs() {
+  document.querySelectorAll('[data-tab]').forEach(el =>
+    el.classList.toggle('tab-active', isMobile && el.dataset.tab.split(' ').includes(mobileTab)));
+  document.querySelectorAll('#tabbar .tab').forEach(btn => {
+    const active = btn.dataset.go === mobileTab;
+    btn.classList.toggle('active', active);
+    if (active) btn.setAttribute('aria-current', 'page');
+    else btn.removeAttribute('aria-current');
+  });
+  $('tab-admin').hidden = !hasAdmin();
+  const pending = allWishes('pend').length;
+  const badge = $('tab-admin-count');
+  badge.textContent = pending;
+  badge.hidden = pending === 0;
+}
+
+function onTabClick(event) {
+  const btn = event.target.closest('.tab');
+  if (!btn) return;
+  mobileTab = btn.dataset.go;
+  if (mobileTab === 'cal') scrollToToday = true;
+  closePicker(false);
+  render();
+  window.scrollTo(0, 0);
+}
+
+function onDeviceChange() {
+  const was = isMobile;
+  applyDeviceMode();
+  if (was === isMobile) return;
+  closePicker(false);
+  scrollToToday = true;
+  render();
+}
+
+/* =========================================================
    Start
    ========================================================= */
 function render() {
+  syncMobileTab();
   renderView();
+  renderTabs();
   renderPersons();
   renderPersonSelect();
   renderCritical();
@@ -834,6 +947,15 @@ function render() {
 function init() {
   state = loadState();
 
+  applyDeviceMode();
+  const mq = window.matchMedia(MOBILE_QUERY);
+  if (mq.addEventListener) mq.addEventListener('change', onDeviceChange);
+  else if (mq.addListener) mq.addListener(onDeviceChange);   // ältere Browser
+
+  $('tabbar').addEventListener('click', onTabClick);
+  $('overview').addEventListener('change', event => {
+    if (event.target.id === 'month-select') setMobileMonth(Number(event.target.value));
+  });
   $('admin-toggle').addEventListener('click', onToggleView);
   $('person-form').addEventListener('submit', onAddPerson);
   $('person-list').addEventListener('click', onPersonListClick);

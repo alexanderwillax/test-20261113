@@ -41,6 +41,7 @@ Sie warnt, wenn zu viele Personen gleichzeitig weg sind.
 | M15 | Admin-Bereich | Oben auf der Seite wechselt ein Knopf zwischen „Planung“ und „Admin-Bereich“. Der Knopf ist nur da, wenn es mindestens einen Admin gibt. Der Admin-Bereich zeigt alle offenen und alle genehmigten Urlaubswünsche. |
 | M16 | Genehmigen / Ablehnen | Der Admin genehmigt einen offenen Wunsch, oder er lehnt ihn ab. Beim Ablehnen werden die Tage gelöscht und gehen zurück aufs Urlaubskonto. |
 | M17 | Status sichtbar | Jeder neue Urlaubstag ist zuerst **offen**: gestreift mit „?“. Genehmigt: kräftig türkis mit „✓“. Der Status steht auch in der Personenliste („offen“ / „genehmigt“). |
+| M18 | Smartphone-Ansicht | Die App erkennt selbst, ob sie auf einem Smartphone läuft, und zeigt dann eine eigene Ansicht (siehe 5.1). Die Ansicht am Computer bleibt gleich. |
 
 ### 3.2 Soll
 
@@ -144,8 +145,23 @@ Eine einzige Seite mit diesen Bereichen von oben nach unten:
 Allgemein:
 - Alle Texte auf Deutsch, in einfacher Sprache.
 - Fehler und Hinweise erscheinen gut sichtbar neben der Eingabe.
-- Gut zu bedienen am Computer-Bildschirm. Am Handy dürfen die Tabellen seitlich scrollen.
+- Gut zu bedienen am Computer-Bildschirm und auf dem Smartphone (siehe 5.1).
 - Farben nicht als einziges Zeichen: Urlaub und kritische Tage bekommen zusätzlich ein Zeichen („?“, „✓“ und „!“).
+
+### 5.1 Smartphone
+
+**Erkennung:** Die App prüft die Größe des Bildschirms, nicht den Namen des Browsers. Das ist zuverlässiger, weil es bei Chrome, Safari, Firefox, Edge und Samsung Internet gleich funktioniert.
+- Smartphone = Bildschirm höchstens 760 Pixel breit, **oder** ein Touch-Gerät mit höchstens 500 Pixel Höhe (Handy im Querformat).
+- Dreht man das Handy oder ändert man die Fenstergröße, wechselt die Ansicht sofort.
+
+**So sieht es auf dem Smartphone aus:**
+- Kleineres Kopfbild.
+- Unten eine feste Leiste mit den Bereichen **Kalender**, **Eintragen**, **Personen** und **Admin**. „Admin“ gibt es nur, wenn es einen Admin gibt. Eine Zahl zeigt die offenen Wünsche. Es ist immer nur ein Bereich zu sehen.
+- Der Knopf „Zum Admin-Bereich“ oben fällt weg. Dafür gibt es den Bereich „Admin“ in der Leiste.
+- **Kalender:** immer nur ein Monat. Gewechselt wird mit ‹ › oder über eine Auswahl. Er startet beim aktuellen Monat und scrollt zum heutigen Tag. Heute ist rot unterstrichen. Die Felder sind größer (mindestens 38 × 44 Pixel). Die Tabelle lässt sich seitlich wischen, die Namen bleiben links stehen.
+- **Kalenderauswahl** öffnet sich als Fenster von unten mit großen Tagen.
+- Alle Knöpfe und Eingabefelder sind groß genug für den Finger (etwa 44 Pixel hoch). Die Schrift in Eingabefeldern ist 16 Pixel groß, damit das iPhone nicht hineinzoomt.
+- Das Datum kann man auch ohne Punkte eintippen: „15032027“ oder „15,03,2027“.
 
 ## 6. Technik und Grenzen
 
@@ -191,3 +207,8 @@ Allgemein:
 | A23 | Heute ist der 17.03.: Übersicht und Kalenderauswahl ansehen | Tage vor dem 17.03. sind blass und lassen sich nicht anklicken. |
 | A24 | Urlaub, der teils in der Vergangenheit liegt, löschen | Nur die Tage ab heute werden gelöscht. Vergangene Tage bleiben stehen. |
 | A25 | Im Admin-Bereich dem letzten Admin die Rechte entfernen | Rückfrage. Danach geht die App zurück zur Planung, der Knopf zum Admin-Bereich verschwindet. |
+| A26 | App auf dem Smartphone öffnen (oder Fenster schmaler als 760 px) | Leiste unten erscheint, nur ein Bereich ist sichtbar, keine seitliche Scrollleiste der Seite. |
+| A27 | Smartphone: Bereich „Kalender“ | Ein Monat, ‹ › wechseln den Monat. Ein Tipp auf ein Feld trägt Urlaub ein oder aus, die Tabelle springt dabei nicht zurück. |
+| A28 | Smartphone: Kalender-Symbol bei „Von“ | Kalenderauswahl öffnet sich von unten. |
+| A29 | Smartphone: Datum „15032027“ eintippen | Wird als 15.03.2027 erkannt. |
+| A30 | Gleiche App am Computer (breites Fenster) | Ansicht wie vorher: alle 12 Monate, keine Leiste unten. |

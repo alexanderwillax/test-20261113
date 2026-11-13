@@ -2,7 +2,8 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#4fbfe6">
   <title>Urlaubsplaner 2027</title>
   <link rel="stylesheet" href="style.css">
 </head>
@@ -97,7 +98,7 @@
 
     <div class="top-grid">
       <!-- Personen -->
-      <section class="card" aria-labelledby="h-persons">
+      <section class="card" data-tab="persons" aria-labelledby="h-persons">
         <h2 id="h-persons">
           <span class="h-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20"><circle cx="9" cy="8" r="3.5" fill="currentColor"/><circle cx="17" cy="9" r="2.5" fill="currentColor" opacity=".7"/><path d="M2.5 20c0-4 3-6.5 6.5-6.5s6.5 2.5 6.5 6.5z" fill="currentColor"/><path d="M14.5 14.2c3.4-.6 7 1.3 7 5.8h-4.6c0-2.4-.9-4.4-2.4-5.8z" fill="currentColor" opacity=".7"/></svg></span>
           Personen
@@ -113,7 +114,7 @@
       </section>
 
       <!-- Urlaub eintragen -->
-      <section class="card" aria-labelledby="h-vacation">
+      <section class="card" data-tab="add" aria-labelledby="h-vacation">
         <h2 id="h-vacation">
           <span class="h-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20"><rect x="3" y="7" width="18" height="13" rx="2.5" fill="currentColor"/><path d="M9 7V5a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 5v2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 7v13M16 7v13" stroke="#fff" stroke-width="1.5" opacity=".6"/></svg></span>
           Urlaub eintragen
@@ -167,7 +168,7 @@
     </div>
 
     <!-- Kritische Tage -->
-    <section id="critical-section" class="card critical-card" aria-labelledby="h-critical" hidden>
+    <section id="critical-section" class="card critical-card" data-tab="cal admin" aria-labelledby="h-critical" hidden>
       <h2 id="h-critical">
         <span class="h-icon h-icon-crit" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20"><path d="M12 3 22 20H2z" fill="currentColor"/><path d="M12 9v5" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="17" r="1.3" fill="#fff"/></svg></span>
         Kritische Tage
@@ -177,7 +178,7 @@
     </section>
 
     <!-- Admin-Bereich (nur sichtbar, wenn bei "Wer bist du?" ein Admin gewählt ist) -->
-    <section id="admin-section" class="card admin-card" aria-labelledby="h-admin" hidden>
+    <section id="admin-section" class="card admin-card" data-tab="admin" aria-labelledby="h-admin" hidden>
       <h2 id="h-admin">
         <span class="h-icon h-icon-admin" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5z" fill="currentColor"/><path d="m8.5 12 2.5 2.5 4.5-5" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
         Admin-Bereich
@@ -192,7 +193,7 @@
     </section>
 
     <!-- Übersicht -->
-    <section class="card" aria-labelledby="h-overview">
+    <section class="card" data-tab="cal" aria-labelledby="h-overview">
       <h2 id="h-overview">
         <span class="h-icon h-icon-sun" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20"><circle cx="12" cy="12" r="4.5" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></g></svg></span>
         Übersicht
@@ -218,6 +219,27 @@
     </svg>
     <p>Schönen Urlaub! ☀</p>
   </footer>
+
+  <!-- Leiste unten: nur auf dem Smartphone sichtbar -->
+  <nav id="tabbar" class="tabbar" aria-label="Bereiche">
+    <button type="button" class="tab" data-go="cal">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="2"/></svg>
+      <span>Kalender</span>
+    </button>
+    <button type="button" class="tab" data-go="add">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 8v8M8 12h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <span>Eintragen</span>
+    </button>
+    <button type="button" class="tab" data-go="persons">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="9" cy="8" r="3.5" fill="currentColor"/><circle cx="17" cy="9" r="2.5" fill="currentColor" opacity=".7"/><path d="M2.5 20c0-4 3-6.5 6.5-6.5s6.5 2.5 6.5 6.5z" fill="currentColor"/><path d="M14.5 14.2c3.4-.6 7 1.3 7 5.8h-4.6c0-2.4-.9-4.4-2.4-5.8z" fill="currentColor" opacity=".7"/></svg>
+      <span>Personen</span>
+    </button>
+    <button type="button" class="tab" data-go="admin" id="tab-admin" hidden>
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5z" fill="currentColor"/></svg>
+      <span>Admin</span>
+      <span id="tab-admin-count" class="tab-badge" hidden></span>
+    </button>
+  </nav>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 

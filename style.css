@@ -672,3 +672,177 @@ button.approve:hover { background: #155e39; }
 }
 .toast.show { opacity: 1; }
 .toast.error { background: var(--error); }
+
+/* =========================================================
+   Smartphone-Ansicht
+   Gilt nur, wenn app.js ein Smartphone erkennt (Klasse "mobile"
+   am <html>). Die Ansicht am Computer bleibt unverändert.
+   ========================================================= */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.tabbar { display: none; }
+
+/* Nur der gewählte Bereich ist sichtbar */
+html.mobile [data-tab]:not(.tab-active) { display: none !important; }
+html.mobile .viewbar { display: none; }
+
+html.mobile body {
+  font-size: 16px;
+  padding-bottom: calc(76px + env(safe-area-inset-bottom));
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Kopfbild kleiner */
+html.mobile .hero { height: 150px; }
+html.mobile .hero-text { padding: calc(16px + env(safe-area-inset-top)) 16px 0; }
+html.mobile .hero-kicker { font-size: 0.7rem; margin-bottom: 4px; }
+html.mobile .hero h1 { font-size: 1.7rem; }
+html.mobile .hero-text p:last-child { display: none; }
+
+html.mobile main { margin-top: -28px; padding: 0 12px 16px; }
+html.mobile .card { padding: 16px; border-radius: 16px; margin-bottom: 12px; }
+html.mobile .card h2 { font-size: 1.15rem; margin-bottom: 12px; }
+html.mobile .top-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; margin-bottom: 12px; }
+
+/* Große Bedienelemente für den Finger */
+html.mobile input[type="text"],
+html.mobile select { min-height: 46px; font-size: 16px; }
+html.mobile .row-form { grid-template-columns: minmax(0, 1fr); }
+html.mobile .row-form > button,
+html.mobile #vac-submit { width: 100%; min-height: 48px; }
+html.mobile .check { min-height: 40px; }
+html.mobile .check input { width: 22px; height: 22px; }
+html.mobile .field-row { grid-template-columns: minmax(0, 1fr); gap: 0; }
+html.mobile .picker-btn { min-width: 48px; }
+html.mobile button.secondary { min-height: 40px; padding: 6px 14px; font-size: 0.9rem; }
+
+/* Personen */
+html.mobile .person-count { flex-basis: 100%; order: 3; padding-left: 46px; }
+html.mobile .person-actions { flex-basis: 100%; order: 4; padding-left: 46px; }
+html.mobile .person-actions button { flex: 1 1 0; }
+html.mobile .entries li { flex-wrap: wrap; }
+html.mobile .person details summary { min-height: 36px; display: flex; align-items: center; }
+
+/* Admin */
+html.mobile .wish-actions { flex-basis: 100%; }
+html.mobile .wish-actions button { flex: 1 1 0; min-height: 44px; }
+html.mobile #role-list button { flex-basis: 100%; }
+
+/* Legende: eine Zeile zum Wischen */
+html.mobile .legend {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  margin: 0 -16px 12px;
+  padding: 0 16px 4px;
+  scrollbar-width: none;
+}
+html.mobile .legend li { flex: 0 0 auto; }
+html.mobile .hint { font-size: 0.9rem; }
+
+/* Monatsauswahl */
+html.mobile .month-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+html.mobile .month-nav select { flex: 1 1 auto; text-align: center; font-weight: 800; }
+html.mobile .month-step {
+  min-width: 48px;
+  min-height: 46px;
+  font-size: 1.4rem;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+html.mobile .month-step:disabled { visibility: hidden; }
+html.mobile .month-block h3 { display: none; }
+html.mobile .month-block { margin-bottom: 8px; }
+
+/* Monatstabelle: größere Felder, Namen schmal, seitlich wischen */
+html.mobile .table-wrap { -webkit-overflow-scrolling: touch; }
+html.mobile table.month th,
+html.mobile table.month td { min-width: 38px; height: 44px; }
+html.mobile table.month .cell { height: 44px; font-size: 0.95rem; }
+html.mobile table.month .name-col { min-width: 88px; max-width: 88px; padding: 0 6px; font-size: 0.8rem; }
+html.mobile table.month thead th.today { box-shadow: inset 0 -4px 0 var(--coral); }
+html.mobile table.month thead th.today .d { color: var(--coral); font-weight: 800; }
+html.mobile .month-holidays { font-size: 0.8rem; }
+
+/* Kalenderauswahl als Fenster von unten */
+html.mobile .picker,
+html.mobile .field-row .field:last-child .picker {
+  position: fixed;
+  top: auto;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  max-width: none;
+  z-index: 60;
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 0 0 100vmax rgba(11, 44, 63, 0.45);
+}
+html.mobile .picker-grid .pday { height: 46px; font-size: 1rem; }
+html.mobile .picker-nav { min-width: 48px; min-height: 42px; }
+
+/* Leiste unten */
+html.mobile .tabbar {
+  display: flex;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  gap: 4px;
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  box-shadow: 0 -4px 16px rgba(18, 53, 74, 0.08);
+}
+html.mobile .tab {
+  position: relative;
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-height: 56px;
+  padding: 6px 2px;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+html.mobile .tab:hover { background: var(--accent-soft); }
+html.mobile .tab.active { background: var(--accent-soft); color: var(--accent); }
+html.mobile .tab-badge {
+  position: absolute;
+  top: 2px;
+  left: calc(50% + 6px);
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--coral);
+  color: #fff;
+  font-size: 0.65rem;
+  line-height: 18px;
+}
+
+/* Hinweis über der Leiste */
+html.mobile .toast {
+  bottom: calc(84px + env(safe-area-inset-bottom));
+  border-radius: 14px;
+  text-align: center;
+}
+
+/* Fußbereich kleiner */
+html.mobile .page-footer p { padding-bottom: 12px; font-size: 0.9rem; }
