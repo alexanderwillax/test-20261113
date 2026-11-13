@@ -88,13 +88,12 @@
   </header>
 
   <main>
-    <!-- Wer bist du? -->
-    <section class="card whoami" aria-label="Wer bist du?">
-      <label for="whoami">Wer bist du?</label>
-      <select id="whoami"></select>
-      <span id="whoami-role" class="badge" hidden></span>
-      <p class="whoami-hint">Ohne Passwort: Die Auswahl zeigt nur passende Bereiche an. Sie ist kein Schutz.</p>
-    </section>
+    <!-- Ansicht wechseln: Planung <-> Admin-Bereich -->
+    <nav class="card viewbar" aria-label="Ansicht">
+      <span id="view-label" class="view-label">Planung</span>
+      <button type="button" id="admin-toggle" class="admin-toggle" hidden>Zum Admin-Bereich</button>
+      <p id="view-hint" class="view-hint">Tipp: Lege eine Person mit dem Häkchen „Ist Admin“ an. Dann erscheint hier der Knopf zum Admin-Bereich.</p>
+    </nav>
 
     <div class="top-grid">
       <!-- Personen -->
@@ -106,6 +105,7 @@
         <form id="person-form" class="row-form" novalidate>
           <label for="person-name">Name</label>
           <input id="person-name" type="text" maxlength="30" autocomplete="off">
+          <label class="check"><input id="person-admin" type="checkbox"> Ist Admin</label>
           <button type="submit">Person anlegen</button>
         </form>
         <p id="person-msg" class="msg" role="status" aria-live="polite"></p>
@@ -187,6 +187,8 @@
       <ul id="pending-list" class="wish-list"></ul>
       <h3>Genehmigte Urlaubswünsche</h3>
       <ul id="approved-list" class="wish-list"></ul>
+      <h3>Admins verwalten</h3>
+      <ul id="role-list" class="wish-list"></ul>
     </section>
 
     <!-- Übersicht -->

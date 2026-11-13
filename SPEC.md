@@ -12,11 +12,11 @@ Sie warnt, wenn zu viele Personen gleichzeitig weg sind.
 
 - Ein kleines Team mit **bis zu 10 Personen**.
 - Alle benutzen **denselben Computer** und denselben Browser.
-- Es gibt **keine Anmeldung** und kein Passwort. Oben wählt man bei „Wer bist du?“ seinen Namen.
-- Es gibt zwei Rollen:
+- Es gibt **keine Anmeldung** und kein Passwort.
+- Es gibt zwei Rollen. Die Rolle wird beim Anlegen der Person festgelegt (Häkchen „Ist Admin“):
   - **Teammitglied:** trägt Urlaubswünsche ein.
-  - **Admin:** sieht zusätzlich den Admin-Bereich und genehmigt oder lehnt Wünsche ab.
-- Die Rollen sind **kein Schutz**. Jeder am Computer kann einen anderen Namen auswählen.
+  - **Admin:** genehmigt oder lehnt Wünsche im Admin-Bereich ab.
+- Die Rollen sind **kein Schutz**. Jeder am Computer kann mit dem Knopf in den Admin-Bereich wechseln.
 
 ## 3. Funktionen
 
@@ -36,9 +36,9 @@ Sie warnt, wenn zu viele Personen gleichzeitig weg sind.
 | M10 | Kalender markieren | In der Übersicht sind Wochenenden, Feiertage und Schulferien unterschiedlich markiert. |
 | M11 | Speichern | Alle Daten bleiben im Browser gespeichert und sind auch nach dem Neuladen noch da. |
 | M12 | Vergangene Tage gesperrt | Tage vor heute kann man weder neu eintragen noch löschen: nicht im Formular, nicht in der Kalenderauswahl, nicht in der Übersicht. Ausnahme: Eine Person wird ganz gelöscht. |
-| M13 | Wer bist du? | Auswahl des eigenen Namens oben auf der Seite. Das Formular „Urlaub eintragen“ wählt dann diese Person vor. |
-| M14 | Admin bestimmen | In der Personenliste kann eine Person zum Admin gemacht werden. Gibt es noch keinen Admin, darf das jeder. Gibt es schon einen, darf das nur ein Admin. Mehrere Admins sind möglich. |
-| M15 | Admin-Bereich | Nur sichtbar, wenn bei „Wer bist du?“ ein Admin gewählt ist. Er zeigt eine Liste aller offenen und aller genehmigten Urlaubswünsche. |
+| M13 | Admin beim Anlegen | Beim Anlegen einer Person gibt es das Häkchen „Ist Admin“. Mehrere Admins sind möglich. |
+| M14 | Admins verwalten | Im Admin-Bereich kann man Personen zum Admin machen oder die Admin-Rechte entfernen. Beim letzten Admin fragt die App vorher nach. |
+| M15 | Admin-Bereich | Oben auf der Seite wechselt ein Knopf zwischen „Planung“ und „Admin-Bereich“. Der Knopf ist nur da, wenn es mindestens einen Admin gibt. Der Admin-Bereich zeigt alle offenen und alle genehmigten Urlaubswünsche. |
 | M16 | Genehmigen / Ablehnen | Der Admin genehmigt einen offenen Wunsch, oder er lehnt ihn ab. Beim Ablehnen werden die Tage gelöscht und gehen zurück aufs Urlaubskonto. |
 | M17 | Status sichtbar | Jeder neue Urlaubstag ist zuerst **offen**: gestreift mit „?“. Genehmigt: kräftig türkis mit „✓“. Der Status steht auch in der Personenliste („offen“ / „genehmigt“). |
 
@@ -71,7 +71,6 @@ Hinweis: Offene **und** genehmigte Tage zählen beide für das Urlaubskonto und 
 - **Person:** eindeutige ID, Name (Pflichtfeld, höchstens 30 Zeichen), Admin (ja/nein)
 - **Urlaubstage:** pro Person eine Liste von Daten (Format `JJJJ-MM-TT`)
 - **Genehmigte Tage:** pro Person eine Liste der Tage, die genehmigt sind. Alle anderen Urlaubstage sind „offen“.
-- **Wer bist du?:** die ID der gerade gewählten Person
 
 Ein **Urlaubswunsch** ist ein Block aus Urlaubstagen mit gleichem Status, zwischen denen nur Wochenenden oder Feiertage liegen.
 
@@ -124,13 +123,13 @@ Beide fallen 2027 auf einen Sonntag. Für die Rechnung macht das also keinen Unt
 Eine einzige Seite mit diesen Bereichen von oben nach unten:
 
 1. **Kopf:** Titel „Urlaubsplaner 2027“ mit Urlaubsbild (Sonne, Berge, Meer, Strand)
-2. **Wer bist du?:** Auswahl des eigenen Namens und Anzeige der Rolle (Admin / Teammitglied)
-3. **Personen:** Liste mit Name, genommen, davon genehmigt, Rest (zum Beispiel „12 von 30 (8 genehmigt) · Rest 18“). Dazu Knöpfe für Anlegen, Umbenennen, Admin und Löschen.
+2. **Ansicht:** zeigt „Planung“ oder „Admin-Bereich“ und den Knopf zum Wechseln. Im Admin-Bereich sind „Personen“ und „Urlaub eintragen“ ausgeblendet.
+3. **Personen:** Formular mit Name und Häkchen „Ist Admin“. Liste mit Name, Abzeichen „Admin“, genommen, davon genehmigt, Rest (zum Beispiel „12 von 30 (8 genehmigt) · Rest 18“). Dazu Knöpfe für Umbenennen und Löschen.
 4. **Urlaub eintragen:** Formular mit Person, Von, Bis und dem Knopf „Eintragen“. Vor dem Speichern zeigt es an, wie viele Urlaubstage das kostet und welche Feiertage im Zeitraum liegen.
    - Datum eintippen (TT.MM.JJJJ) oder über eine eigene Kalenderauswahl wählen.
    - In der Kalenderauswahl sind Feiertage (gelb, „F“), Wochenenden (grau) und Schulferien (grün) farbig markiert. Unter dem Monat stehen die Namen der Feiertage.
 5. **Kritische Tage:** Liste (nur sichtbar, wenn es welche gibt)
-6. **Admin-Bereich:** nur für Admins. Liste „Offene Urlaubswünsche“ mit den Knöpfen Genehmigen und Ablehnen, darunter die Liste „Genehmigte Urlaubswünsche“.
+6. **Admin-Bereich:** nur in der Ansicht „Admin-Bereich“. Liste „Offene Urlaubswünsche“ mit den Knöpfen Genehmigen und Ablehnen, darunter „Genehmigte Urlaubswünsche“ und „Admins verwalten“.
 7. **Legende:** Farben erklärt
 8. **Übersicht:** 12 Monatstabellen untereinander
    - Zeilen = Personen, Spalten = Tage 1 bis 28/29/30/31
@@ -159,7 +158,7 @@ Allgemein:
 - Die Daten liegen **nur in diesem Browser auf diesem Computer**.
   Ein anderer Browser oder ein anderer Computer sieht sie nicht.
 - Wer den Browserverlauf beziehungsweise die Website-Daten löscht, löscht **auch alle Urlaubsdaten**.
-- Es gibt keinen Schutz: Jeder am Computer kann alle Einträge ändern und sich als Admin auswählen.
+- Es gibt keinen Schutz: Jeder am Computer kann alle Einträge ändern und in den Admin-Bereich wechseln.
 - „Heute“ kommt von der Uhr des Computers. Ist sie falsch eingestellt, sind die falschen Tage gesperrt.
 - Die App funktioniert nur für 2027. Für ein anderes Jahr müssen Feiertage und Ferien im Code geändert werden.
 
@@ -183,11 +182,12 @@ Allgemein:
 | A14 | Übersicht ansehen | 12 Monate. Wochenenden, Feiertage und Schulferien sind unterschiedlich markiert. Die Legende passt dazu. |
 | A15 | Dateien ansehen | Keine externen Links zu Bibliotheken, keine Passwörter oder Schlüssel. |
 | A16 | Neuen Urlaub eintragen | Er erscheint als „offen“ (gestreift, „?“). |
-| A17 | Noch kein Admin: Person „Chef“ → „Zum Admin machen“ | Chef ist Admin, Abzeichen „Admin“ erscheint. |
-| A18 | „Wer bist du?“ = Anna (kein Admin) | Kein Admin-Bereich. Der Knopf „Zum Admin machen“ ist gesperrt. |
-| A19 | „Wer bist du?“ = Chef | Admin-Bereich erscheint mit allen offenen Wünschen. |
+| A17 | Noch kein Admin: Personen ohne Häkchen anlegen | Kein Knopf „Zum Admin-Bereich“. Ein Hinweis erklärt, wie man einen Admin anlegt. |
+| A18 | Person „Chef“ mit Häkchen „Ist Admin“ anlegen | Chef hat das Abzeichen „Admin“. Der Knopf „Zum Admin-Bereich“ erscheint. |
+| A19 | Knopf „Zum Admin-Bereich“ klicken | Admin-Bereich mit allen offenen Wünschen erscheint. „Personen“ und „Urlaub eintragen“ sind ausgeblendet. Der Knopf heißt jetzt „Zurück zur Planung“. |
 | A20 | Chef klickt „Genehmigen“ bei Anna | Annas Tage sind „genehmigt“ (türkis, „✓“) und stehen unter „Genehmigte Urlaubswünsche“. |
 | A21 | Chef klickt „Ablehnen“ bei Ben | Rückfrage. Danach sind Bens Tage gelöscht, sein Rest steigt wieder. |
 | A22 | Heute ist der 17.03.: Urlaub ab 16.03. eintragen | Nicht erlaubt. Hinweis „Vergangene Tage können nicht mehr gewählt werden“. |
 | A23 | Heute ist der 17.03.: Übersicht und Kalenderauswahl ansehen | Tage vor dem 17.03. sind blass und lassen sich nicht anklicken. |
 | A24 | Urlaub, der teils in der Vergangenheit liegt, löschen | Nur die Tage ab heute werden gelöscht. Vergangene Tage bleiben stehen. |
+| A25 | Im Admin-Bereich dem letzten Admin die Rechte entfernen | Rückfrage. Danach geht die App zurück zur Planung, der Knopf zum Admin-Bereich verschwindet. |

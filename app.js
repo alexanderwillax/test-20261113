@@ -227,10 +227,13 @@ function allWishes(status) {
 /* =========================================================
    Speichern und Laden
    ========================================================= */
-let state = { persons: [], currentId: '' };
+let state = { persons: [] };
+
+/* Aktuelle Ansicht: 'plan' = Planung, 'admin' = Admin-Bereich (wird nicht gespeichert) */
+let view = 'plan';
 
 function loadState() {
-  const empty = { persons: [], currentId: '' };
+  const empty = { persons: [] };
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return empty;
@@ -246,8 +249,7 @@ function loadState() {
         const approved = Array.isArray(p.approved) ? p.approved.filter(d => days.includes(d)) : [];
         return { id: String(p.id), name: p.name.slice(0, MAX_NAME), admin: p.admin === true, days, approved };
       });
-    const currentId = persons.some(p => p.id === data.currentId) ? data.currentId : '';
-    return { persons, currentId };
+    return { persons };
   } catch (e) {
     return empty;
   }
@@ -270,46 +272,33 @@ function findPerson(id) {
 }
 
 /* =========================================================
-   Wer bist du? / Admin
+   Ansicht wechseln: Planung <-> Admin-Bereich
    ========================================================= */
-function currentUser() {
-  return findPerson(state.currentId);
+function hasAdmin() {
+  return state.persons.some(p => p.admin);
 }
 
-function isAdminUser() {
-  const user = currentUser();
-  return !!(user && user.admin);
+function isAdminView() {
+  return view === 'admin' && hasAdmin();
 }
 
-/* Solange es keinen Admin gibt, darf jeder einen Admin bestimmen.
-   Danach darf das nur noch ein Admin. */
-function canChangeAdmin() {
-  return !state.persons.some(p => p.admin) || isAdminUser();
-}
-
-function renderWhoAmI() {
-  const select = $('whoami');
-  select.innerHTML = '<option value="">– Bitte wählen –</option>' + state.persons.map(p =>
-    '<option value="' + escapeHtml(p.id) + '">' + escapeHtml(p.name) + (p.admin ? ' (Admin)' : '') + '</option>'
-  ).join('');
-  select.value = state.currentId;
-  select.disabled = state.persons.length === 0;
-
-  const user = currentUser();
-  const role = $('whoami-role');
-  role.textContent = user ? (user.admin ? 'Admin' : 'Teammitglied') : '';
-  role.className = 'badge' + (user ? (user.admin ? ' badge-admin' : ' badge-member') : '');
-  role.hidden = !user;
-}
-
-function onWhoAmIChange() {
-  state.currentId = $('whoami').value;
-  saveState();
+function onToggleView() {
+  view = isAdminView() ? 'plan' : 'admin';
   render();
-  if (state.currentId) {
-    $('vac-person').value = state.currentId;
-    updatePreview();
-  }
+  $('admin-toggle').focus();
+}
+
+function renderView() {
+  if (!hasAdmin()) view = 'plan';
+  const adminView = isAdminView();
+  const button = $('admin-toggle');
+  button.hidden = !hasAdmin();
+  button.textContent = adminView ? 'Zurück zur Planung' : 'Zum Admin-Bereich';
+  button.classList.toggle('back', adminView);
+  $('view-label').textContent = adminView ? 'Admin-Bereich' : 'Planung';
+  $('view-hint').hidden = hasAdmin();
+  /* Im Admin-Bereich: Personen und Formular ausblenden */
+  document.querySelector('.top-grid').hidden = adminView;
 }
 
 /* =========================================================
@@ -377,10 +366,12 @@ function onAddPerson(event) {
     return;
   }
   const name = input.value.trim();
-  state.persons.push({ id: newId(), name, admin: false, days: [], approved: [] });
+  const admin = $('person-admin').checked;
+  state.persons.push({ id: newId(), name, admin, days: [], approved: [] });
   saveState();
   input.value = '';
-  showMsg(msg, name + ' wurde angelegt.', 'ok');
+  $('person-admin').checked = false;
+  showMsg(msg, name + (admin ? ' wurde als Admin angelegt.' : ' wurde angelegt.'), 'ok');
   render();
 }
 
@@ -407,22 +398,10 @@ function onPersonListClick(event) {
     render();
   }
 
-  if (action === 'toggle-admin') {
-    if (!canChangeAdmin()) {
-      showMsg(msg, 'Nur ein Admin darf Admins bestimmen. Wähle oben bei „Wer bist du?“ einen Admin.', 'error');
-      return;
-    }
-    person.admin = !person.admin;
-    saveState();
-    showMsg(msg, person.name + (person.admin ? ' ist jetzt Admin.' : ' ist kein Admin mehr.'), 'ok');
-    render();
-  }
-
   if (action === 'delete') {
     const ok = confirm(person.name + ' wirklich löschen?\nAlle Urlaubstage von ' + person.name + ' werden auch gelöscht.');
     if (!ok) return;
     state.persons = state.persons.filter(p => p.id !== person.id);
-    if (state.currentId === person.id) state.currentId = '';
     saveState();
     showMsg(msg, person.name + ' wurde gelöscht.', 'ok');
     render();
@@ -454,8 +433,6 @@ function renderPersons() {
     return;
   }
 
-  const adminAllowed = canChangeAdmin();
-
   list.innerHTML = state.persons.map(p => {
     const taken = p.days.length;
     const approved = p.approved.length;
@@ -476,11 +453,6 @@ function renderPersons() {
         '</li>';
     }).join('');
 
-    const adminButton = '<button type="button" class="secondary" data-action="toggle-admin" data-id="' + id + '"' +
-      ' aria-pressed="' + p.admin + '"' +
-      (adminAllowed ? '' : ' disabled title="Nur ein Admin darf Admins bestimmen."') + '>' +
-      (p.admin ? 'Admin entfernen' : 'Zum Admin machen') + '</button>';
-
     return '<li class="person">' +
       '<div class="person-head">' +
         avatarHtml(p) +
@@ -489,7 +461,6 @@ function renderPersons() {
           ' (' + approved + ' genehmigt) · Rest ' + rest + '</span>' +
         '<span class="person-actions">' +
           '<button type="button" class="secondary" data-action="rename" data-id="' + id + '">Umbenennen</button>' +
-          adminButton +
           '<button type="button" class="secondary danger" data-action="delete" data-id="' + id + '">Löschen</button>' +
         '</span>' +
       '</div>' +
@@ -510,7 +481,7 @@ function renderPersons() {
    ========================================================= */
 function renderPersonSelect() {
   const select = $('vac-person');
-  const current = select.value || state.currentId;
+  const current = select.value;
   if (state.persons.length === 0) {
     select.innerHTML = '<option value="">Erst eine Person anlegen</option>';
     select.disabled = true;
@@ -656,7 +627,7 @@ function wishItem(wish, withActions) {
 
 function renderAdmin() {
   const section = $('admin-section');
-  section.hidden = !isAdminUser();
+  section.hidden = !isAdminView();
   if (section.hidden) return;
 
   const pending = allWishes('pend');
@@ -668,13 +639,33 @@ function renderAdmin() {
   $('approved-list').innerHTML = approved.length
     ? approved.map(w => wishItem(w, false)).join('')
     : '<li class="empty">Noch nichts genehmigt.</li>';
+
+  $('role-list').innerHTML = state.persons.map(p =>
+    '<li class="wish">' + avatarHtml(p) +
+    '<span class="wish-text"><strong>' + escapeHtml(p.name) + '</strong></span>' +
+    (p.admin ? '<span class="badge badge-admin">Admin</span>' : '<span class="badge badge-member">Teammitglied</span>') +
+    '<button type="button" class="secondary" data-action="toggle-admin" data-id="' + escapeHtml(p.id) + '"' +
+      ' aria-pressed="' + p.admin + '">' + (p.admin ? 'Admin-Rechte entfernen' : 'Zum Admin machen') + '</button>' +
+    '</li>'
+  ).join('');
 }
 
 function onAdminClick(event) {
   const button = event.target.closest('button[data-action]');
-  if (!button || !isAdminUser()) return;
+  if (!button || !isAdminView()) return;
   const person = findPerson(button.dataset.id);
   if (!person) return;
+
+  if (button.dataset.action === 'toggle-admin') {
+    const lastAdmin = person.admin && state.persons.filter(p => p.admin).length === 1;
+    if (lastAdmin && !confirm(person.name + ' ist der letzte Admin.\nDanach gibt es keinen Admin-Bereich mehr. Trotzdem fortfahren?')) return;
+    person.admin = !person.admin;
+    saveState();
+    showMsg($('admin-msg'), person.name + (person.admin ? ' ist jetzt Admin.' : ' ist kein Admin mehr.'), 'ok');
+    render();
+    return;
+  }
+
   const from = button.dataset.from;
   const to = button.dataset.to;
   const range = formatRange(from, to);
@@ -831,7 +822,7 @@ function onOverviewClick(event) {
    Start
    ========================================================= */
 function render() {
-  renderWhoAmI();
+  renderView();
   renderPersons();
   renderPersonSelect();
   renderCritical();
@@ -843,7 +834,7 @@ function render() {
 function init() {
   state = loadState();
 
-  $('whoami').addEventListener('change', onWhoAmIChange);
+  $('admin-toggle').addEventListener('click', onToggleView);
   $('person-form').addEventListener('submit', onAddPerson);
   $('person-list').addEventListener('click', onPersonListClick);
   $('vacation-form').addEventListener('submit', onAddVacation);
