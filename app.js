@@ -102,6 +102,23 @@ function formatDate(text) {
   return d + '.' + m + '.' + y;
 }
 
+/* "TT.MM.JJJJ" (oder "JJJJ-MM-TT") in "JJJJ-MM-TT" umwandeln. Ungültig: '' */
+function parseGermanDate(text) {
+  const value = text.trim();
+  let y, m, d;
+  let match = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(value);
+  if (match) {
+    [, d, m, y] = match.map(Number);
+  } else {
+    match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    if (!match) return '';
+    [, y, m, d] = match.map(Number);
+  }
+  const date = new Date(Date.UTC(y, m - 1, d));
+  if (date.getUTCFullYear() !== y || date.getUTCMonth() !== m - 1 || date.getUTCDate() !== d) return '';
+  return date.toISOString().slice(0, 10);
+}
+
 function formatDateLong(text) {
   return WEEKDAYS[weekday(text)] + ', ' + formatDate(text);
 }
@@ -373,11 +390,14 @@ function renderPersonSelect() {
 
 function readVacationForm() {
   const person = findPerson($('vac-person').value);
-  const from = $('vac-from').value;
-  const to = $('vac-to').value || from;
+  const fromText = $('vac-from').value.trim();
+  const toText = $('vac-to').value.trim();
+  const from = parseGermanDate(fromText);
+  const to = toText ? parseGermanDate(toText) : from;
 
   if (!person) return { error: 'Bitte lege zuerst eine Person an.' };
-  if (!from) return { error: 'Bitte gib ein Startdatum ein.' };
+  if (!fromText) return { error: 'Bitte gib ein Startdatum ein.' };
+  if (!from || !to) return { error: 'Bitte das Datum so eingeben: TT.MM.JJJJ (zum Beispiel 15.03.2027).' };
   if (!isInYear(from) || !isInYear(to)) return { error: 'Bitte nur Tage im Jahr ' + YEAR + ' wählen.' };
   if (to < from) return { error: 'Das Enddatum liegt vor dem Startdatum.' };
 
@@ -387,7 +407,7 @@ function readVacationForm() {
 function updatePreview() {
   const preview = $('vac-preview');
   preview.className = 'preview';
-  if (!$('vac-from').value) {
+  if (!$('vac-from').value.trim()) {
     preview.textContent = '';
     return;
   }
@@ -406,6 +426,11 @@ function updatePreview() {
     preview.className = 'preview warn';
   } else {
     preview.textContent = 'Das kostet ' + daysText(n) + '. Danach bleiben noch ' + (rest - n) + '.';
+  }
+  const holidays = rangeDays(r.from, r.to).filter(d => isHoliday(d) && !isWeekend(d));
+  if (holidays.length) {
+    preview.textContent += ' Feiertage im Zeitraum (kosten nichts): ' +
+      holidays.map(d => formatDate(d).slice(0, 6) + ' ' + HOLIDAYS[d]).join(', ') + '.';
   }
 }
 
@@ -442,6 +467,7 @@ function onAddVacation(event) {
 
   $('vac-from').value = '';
   $('vac-to').value = '';
+  closePicker(false);
   render();
 }
 
@@ -531,7 +557,15 @@ function renderOverview() {
       const text = i.count === 0 ? '' : (i.critical ? i.count + '!' : String(i.count));
       html += '<td class="' + i.cls + '">' + text + '</td>';
     }
-    html += '</tr></tfoot></table></div></section>';
+    html += '</tr></tfoot></table></div>';
+
+    const monthHolidays = infos.filter(i => i.holiday);
+    if (monthHolidays.length) {
+      html += '<p class="month-holidays"><span class="sw sw-hol">F</span><strong>Feiertage:</strong> ' +
+        monthHolidays.map(i => i.wd + ' ' + formatDate(i.day).slice(0, 6) + ' ' + escapeHtml(i.holiday)).join(' · ') +
+        '</p>';
+    }
+    html += '</section>';
   }
 
   box.innerHTML = html;
@@ -588,14 +622,152 @@ function init() {
     $(id).addEventListener('input', updatePreview);
     $(id).addEventListener('change', updatePreview);
   }
-  /* Wenn "Von" gesetzt wird und "Bis" leer oder davor ist: "Bis" gleich "Von" setzen */
-  $('vac-from').addEventListener('change', () => {
-    const to = $('vac-to');
-    if (!to.value || to.value < $('vac-from').value) to.value = $('vac-from').value;
-    updatePreview();
-  });
+  $('vac-from').addEventListener('change', syncToWithFrom);
 
+  initPicker();
   render();
+}
+
+/* Wenn "Von" gültig ist und "Bis" leer oder davor liegt: "Bis" gleich "Von" setzen */
+function syncToWithFrom() {
+  const from = parseGermanDate($('vac-from').value);
+  if (!from) return;
+  const to = parseGermanDate($('vac-to').value);
+  if (!to || to < from) $('vac-to').value = formatDate(from);
+  updatePreview();
+}
+
+/* =========================================================
+   Eigene Kalenderauswahl (zeigt Feiertage farbig)
+   ========================================================= */
+const picker = { inputId: null, month: 0, focusDay: null };
+
+function initPicker() {
+  document.querySelectorAll('.picker-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (picker.inputId === btn.dataset.for) closePicker(true);
+      else openPicker(btn.dataset.for);
+    });
+  });
+  $('picker-prev').addEventListener('click', () => changePickerMonth(-1));
+  $('picker-next').addEventListener('click', () => changePickerMonth(1));
+  $('picker-grid').addEventListener('click', event => {
+    const btn = event.target.closest('button.pday');
+    if (btn) choosePickerDay(btn.dataset.day);
+  });
+  $('picker-grid').addEventListener('keydown', onPickerKey);
+  $('picker').addEventListener('keydown', event => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closePicker(true);
+    }
+  });
+  document.addEventListener('mousedown', event => {
+    if (picker.inputId && !event.target.closest('#picker') && !event.target.closest('.picker-btn')) closePicker(false);
+  });
+}
+
+function openPicker(inputId) {
+  const input = $(inputId);
+  /* Startmonat: gewähltes Datum, sonst "Von"-Datum, sonst Januar */
+  const start = parseGermanDate(input.value) || parseGermanDate($('vac-from').value);
+  const startDay = start && isInYear(start) ? start : isoDate(0, 1);
+
+  picker.inputId = inputId;
+  picker.month = Number(startDay.slice(5, 7)) - 1;
+  picker.focusDay = startDay;
+
+  const box = $('picker');
+  input.parentElement.appendChild(box);
+  box.hidden = false;
+  document.querySelectorAll('.picker-btn').forEach(b =>
+    b.setAttribute('aria-expanded', String(b.dataset.for === inputId)));
+  renderPicker(true);
+}
+
+function closePicker(returnFocus) {
+  const id = picker.inputId;
+  picker.inputId = null;
+  $('picker').hidden = true;
+  document.querySelectorAll('.picker-btn').forEach(b => b.setAttribute('aria-expanded', 'false'));
+  if (returnFocus && id) $(id).focus();
+}
+
+function changePickerMonth(step) {
+  const month = Math.min(11, Math.max(0, picker.month + step));
+  if (month === picker.month) return;
+  picker.month = month;
+  picker.focusDay = isoDate(month, 1);
+  renderPicker(false);
+}
+
+function renderPicker(moveFocus) {
+  const m = picker.month;
+  $('picker-title').textContent = MONTHS[m] + ' ' + YEAR;
+  $('picker-prev').disabled = m === 0;
+  $('picker-next').disabled = m === 11;
+
+  const selected = parseGermanDate($(picker.inputId).value);
+  const from = parseGermanDate($('vac-from').value);
+  const to = parseGermanDate($('vac-to').value);
+
+  let html = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
+    .map(w => '<span class="wd-head" aria-hidden="true">' + w + '</span>').join('');
+
+  /* Leere Felder vor dem 1. (Woche beginnt am Montag) */
+  const firstWeekday = (weekday(isoDate(m, 1)) + 6) % 7;
+  for (let i = 0; i < firstWeekday; i++) html += '<span></span>';
+
+  const holidays = [];
+  for (let d = 1; d <= daysInMonth(m); d++) {
+    const day = isoDate(m, d);
+    const school = schoolHoliday(day);
+    const holiday = isHoliday(day) ? HOLIDAYS[day] : '';
+    if (holiday) holidays.push(d + '. ' + holiday);
+
+    const cls = ['pday'];
+    if (school) cls.push('school');
+    if (isWeekend(day)) cls.push('we');
+    if (holiday) cls.push('hol');
+    if (from && to && day >= from && day <= to) cls.push('in-range');
+    if (day === selected) cls.push('selected');
+
+    const info = [holiday, school ? school.name : ''].filter(Boolean).join(', ');
+    const label = formatDateLong(day) + (info ? ' – ' + info : '');
+    html += '<button type="button" class="' + cls.join(' ') + '" data-day="' + day + '"' +
+      ' tabindex="' + (day === picker.focusDay ? '0' : '-1') + '"' +
+      ' aria-label="' + escapeHtml(label) + '"' + (info ? ' title="' + escapeHtml(info) + '"' : '') + '>' +
+      d + (holiday ? '<span class="mark" aria-hidden="true">F</span>' : '') + '</button>';
+  }
+
+  $('picker-grid').innerHTML = html;
+  $('picker-info').textContent = holidays.length ? 'Feiertage: ' + holidays.join(', ') : '';
+
+  if (moveFocus) {
+    const btn = $('picker-grid').querySelector('button[data-day="' + picker.focusDay + '"]');
+    if (btn) btn.focus();
+  }
+}
+
+/* Pfeiltasten: Tag vor/zurück, Woche hoch/runter */
+function onPickerKey(event) {
+  const steps = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 };
+  if (!(event.key in steps)) return;
+  event.preventDefault();
+  const next = new Date(parseIso(picker.focusDay).getTime() + steps[event.key] * 86400000)
+    .toISOString().slice(0, 10);
+  if (!isInYear(next)) return;
+  picker.focusDay = next;
+  picker.month = Number(next.slice(5, 7)) - 1;
+  renderPicker(true);
+}
+
+function choosePickerDay(day) {
+  const inputId = picker.inputId;
+  $(inputId).value = formatDate(day);
+  closePicker(true);
+  if (inputId === 'vac-from') syncToWithFrom();
+  else updatePreview();
 }
 
 if (typeof document !== 'undefined') init();

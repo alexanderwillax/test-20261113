@@ -37,12 +37,38 @@
           <div class="field-row">
             <div class="field">
               <label for="vac-from">Von</label>
-              <input id="vac-from" type="date" min="2027-01-01" max="2027-12-31">
+              <div class="date-field">
+                <input id="vac-from" type="text" inputmode="numeric" placeholder="TT.MM.JJJJ" autocomplete="off">
+                <button type="button" class="picker-btn" data-for="vac-from" aria-label="Kalender für Von öffnen" aria-expanded="false">
+                  <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="2"/></svg>
+                </button>
+              </div>
             </div>
             <div class="field">
               <label for="vac-to">Bis</label>
-              <input id="vac-to" type="date" min="2027-01-01" max="2027-12-31">
+              <div class="date-field">
+                <input id="vac-to" type="text" inputmode="numeric" placeholder="TT.MM.JJJJ" autocomplete="off">
+                <button type="button" class="picker-btn" data-for="vac-to" aria-label="Kalender für Bis öffnen" aria-expanded="false">
+                  <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="2"/></svg>
+                </button>
+              </div>
             </div>
+          </div>
+
+          <!-- Eigene Kalenderauswahl (wird beim Öffnen unter das passende Datumsfeld gesetzt) -->
+          <div id="picker" class="picker" role="dialog" aria-label="Datum wählen" hidden>
+            <div class="picker-head">
+              <button type="button" class="picker-nav" id="picker-prev" aria-label="Vorheriger Monat">‹</button>
+              <span id="picker-title" class="picker-title"></span>
+              <button type="button" class="picker-nav" id="picker-next" aria-label="Nächster Monat">›</button>
+            </div>
+            <div id="picker-grid" class="picker-grid"></div>
+            <p id="picker-info" class="picker-info"></p>
+            <ul class="picker-legend" aria-hidden="true">
+              <li><span class="sw sw-hol">F</span> Feiertag</li>
+              <li><span class="sw sw-we"></span> Wochenende</li>
+              <li><span class="sw sw-school"></span> Schulferien</li>
+            </ul>
           </div>
           <p id="vac-preview" class="preview" aria-live="polite"></p>
           <button id="vac-submit" type="submit">Eintragen</button>

@@ -108,7 +108,9 @@ Eine einzige Seite mit diesen Bereichen von oben nach unten:
 
 1. **Kopf:** Titel „Urlaubsplaner 2027“
 2. **Personen:** Liste mit Name, genommen, Rest (zum Beispiel „12 / 30, Rest 18“). Dazu Knöpfe für Anlegen, Umbenennen und Löschen.
-3. **Urlaub eintragen:** Formular mit Person, Von, Bis und dem Knopf „Eintragen“. Vor dem Speichern zeigt es an, wie viele Urlaubstage das kostet.
+3. **Urlaub eintragen:** Formular mit Person, Von, Bis und dem Knopf „Eintragen“. Vor dem Speichern zeigt es an, wie viele Urlaubstage das kostet und welche Feiertage im Zeitraum liegen.
+   - Datum eintippen (TT.MM.JJJJ) oder über eine eigene Kalenderauswahl wählen.
+   - In der Kalenderauswahl sind Feiertage (gelb, „F“), Wochenenden (grau) und Schulferien (grün) farbig markiert. Unter dem Monat stehen die Namen der Feiertage.
 4. **Kritische Tage:** Liste (nur sichtbar, wenn es welche gibt)
 5. **Legende:** Farben erklärt
 6. **Übersicht:** 12 Monatstabellen untereinander
@@ -117,6 +119,7 @@ Eine einzige Seite mit diesen Bereichen von oben nach unten:
    - Zelle mit Urlaub: kräftige Farbe
    - Wochenende: grau, Feiertag: eigene Farbe, Schulferien: leichte Hintergrundfarbe
    - Kritischer Tag: Spalte rot markiert
+   - Unter jeder Monatstabelle: Liste der Feiertage dieses Monats mit Namen
    - Zelle anklicken schaltet Urlaub an oder aus (nicht an Wochenenden und Feiertagen)
 
 Allgemein:
